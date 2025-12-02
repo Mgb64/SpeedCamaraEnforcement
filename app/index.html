@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Detección de Tráfico e Infracciones</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #f4f4f9;
+            --sidebar-bg: #ffffff;
+            --accent-color: #2c3e50;
+            --danger-color: #e74c3c;
+            --success-color: #27ae60;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        header {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            color: var(--accent-color);
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        /* Contenedor Principal (Dos Columnas) */
+        .main-container {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            overflow: hidden; /* Evita scroll en el body */
+        }
+
+        /* Columna Izquierda: Video */
+        .video-section {
+            flex: 3;
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+     canvas {
+         width: 100%;           /* Ocupa todo el ancho disponible */
+         height: auto;          /* Mantiene la proporción correcta (aspect ratio) */
+         max-height: 80vh;      /* Que no sea más alto que el 80% de la pantalla */
+         object-fit: contain;   /* Asegura que se vea todo el video sin recortes */
+         border: 1px solid #ddd;
+         background: #000;
+     }
+
+     video {
+         display: none; /* Ocultamos el video original, usamos el canvas */
+     }
+
+        /* Columna Derecha: Logs */
+        .log-section {
+            flex: 1;
+            background: var(--sidebar-bg);
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            min-width: 300px;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .log-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex: 1;
+            overflow-y: auto; /* Scroll interno */
+        }
+
+        .log-list li {
+            background: #fff0f0;
+            border-left: 4px solid var(--danger-color);
+            padding: 10px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Controles */
+        .controls {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .btn-start { background-color: var(--success-color); color: white; }
+        .btn-stop { background-color: var(--danger-color); color: white; }
+        .btn-export { background-color: var(--accent-color); color: white; }
+        
+        button:hover { opacity: 0.9; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+
+        #status {
+            font-weight: bold;
+            color: #666;
+            margin-left: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="controls">
+            <input type="file" id="fileInput" accept="video/*">
+            <button class="btn-start" onclick="startProcessing()">▶ Iniciar Análisis</button>
+            <button class="btn-stop" onclick="stopProcessing()">⏸ Pausar</button>
+            <span id="status">Cargando recursos...</span>
+        </div>
+        <h1>Radar IA 📷</h1>
+    </header>
+
+    <div class="main-container">
+        
+        <div class="video-section">
+            <canvas id="canvas"></canvas>
+            <video id="videoInput" loop muted playsinline></video>
+        </div>
+
+        <div class="log-section">
+            <div class="log-header">
+                <h3>🚨 Infracciones</h3>
+                <button class="btn-export" onclick="downloadReport()">📥 Descargar TXT</button>
+            </div>
+            <ul id="violationsLog" class="log-list">
+                <li style="background: #eef; border-color: #88f; color: #555;">
+                    ℹ️ Esperando detecciones...
+                </li>
+            </ul>
+        </div>
+
+    </div>
+
+    <script src="model.js"></script>
+
+</body>
+</html>
